@@ -31,7 +31,6 @@ impl<T> UninitCell<T> {
         ptr::write(self.as_mut_ptr(), func())
     }
 
-    #[flux::spec(fn (me: &UninitCell<T>))]
     pub unsafe fn drop_in_place(&self) {
         ptr::drop_in_place(self.as_mut_ptr())
     }

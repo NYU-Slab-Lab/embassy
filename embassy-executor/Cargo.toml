@@ -101,6 +101,7 @@ features = ["defmt", "platform-cortex-m", "executor-thread", "executor-interrupt
 
 [package.metadata.flux]
 enabled = true
+include_trusted = ["def:__UnitraitShims"]
 
 [dependencies]
 defmt = { version = "1.0.1", optional = true }

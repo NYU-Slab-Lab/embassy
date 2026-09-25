@@ -55,11 +55,22 @@ use crate::{ExecutorId, Metadata, MetadataRef, SpawnError, TaskId};
 
 struct TimerQueueItemProviderImpl;
 
+#[flux_rs::extern_spec(embassy_executor_timer_queue)]
+trait TimerQueueItemProvider {
+    #[flux::spec(fn (waker: &Waker[@w]) -> &mut TimerQueueItem requires w.data.addr != 0)]
+    unsafe fn item_from_waker(waker: &Waker) -> &'static mut TimerQueueItem;
+
+    #[flux::spec(fn (waker: &Waker[@w]) -> Option<&mut TimerQueueItem> requires w.data.addr != 0)]
+    unsafe fn try_item_from_waker(waker: &Waker) -> Option<&'static mut TimerQueueItem>;
+}
+
 impl embassy_executor_timer_queue::TimerQueueItemProvider for TimerQueueItemProviderImpl {
+    #[flux::spec(fn (waker: &Waker[@w]) -> &mut TimerQueueItem requires w.data.addr != 0)]
     unsafe fn item_from_waker(waker: &Waker) -> &'static mut TimerQueueItem {
         unsafe { task_from_waker(waker).timer_queue_item() }
     }
 
+    #[flux::spec(fn (waker: &Waker[@w]) -> Option<&mut TimerQueueItem> requires w.data.addr != 0)]
     unsafe fn try_item_from_waker(waker: &Waker) -> Option<&'static mut TimerQueueItem> {
         unsafe { try_task_from_waker(waker).map(|task| task.timer_queue_item()) }
     }

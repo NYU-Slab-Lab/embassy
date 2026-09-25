@@ -32,6 +32,7 @@ pub(crate) unsafe fn from_task(p: TaskRef) -> Waker {
 /// # Panics
 ///
 /// Panics if the waker is not created by the Embassy executor.
+#[flux::spec(fn (waker: &Waker[@w]) -> TaskRef requires w.data.addr != 0)]
 pub fn task_from_waker(waker: &Waker) -> TaskRef {
     unwrap!(
         try_task_from_waker(waker),
@@ -39,6 +40,7 @@ pub fn task_from_waker(waker: &Waker) -> TaskRef {
     )
 }
 
+#[flux::spec(fn (waker: &Waker[@w]) -> Option<TaskRef> requires w.data.addr != 0)]
 pub(crate) fn try_task_from_waker(waker: &Waker) -> Option<TaskRef> {
     // make sure to compare vtable addresses. Doing `==` on the references
     // will compare the contents, which is slower.
@@ -46,9 +48,5 @@ pub(crate) fn try_task_from_waker(waker: &Waker) -> Option<TaskRef> {
         return None;
     }
     // safety: our wakers are always created with `TaskRef::as_ptr`
-    let data = waker.data();
-    if data.is_null() {
-        return None;
-    }
-    Some(unsafe { TaskRef::from_ptr(data as *const TaskHeader) })
+    Some(unsafe { TaskRef::from_ptr(waker.data() as *const TaskHeader) })
 }
