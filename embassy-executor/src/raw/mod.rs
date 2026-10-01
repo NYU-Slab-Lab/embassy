@@ -55,11 +55,22 @@ use crate::{ExecutorId, Metadata, MetadataRef, SpawnError, TaskId};
 
 struct TimerQueueItemProviderImpl;
 
+#[flux_rs::extern_spec(embassy_executor_timer_queue)]
+trait TimerQueueItemProvider {
+    #[flux::spec(fn (waker: &Waker[@w]) -> &mut TimerQueueItem requires w.data.addr != 0)]
+    unsafe fn item_from_waker(waker: &Waker) -> &'static mut TimerQueueItem;
+
+    #[flux::spec(fn (waker: &Waker[@w]) -> Option<&mut TimerQueueItem> requires w.data.addr != 0)]
+    unsafe fn try_item_from_waker(waker: &Waker) -> Option<&'static mut TimerQueueItem>;
+}
+
 impl embassy_executor_timer_queue::TimerQueueItemProvider for TimerQueueItemProviderImpl {
+    #[flux::spec(fn (waker: &Waker[@w]) -> &mut TimerQueueItem requires w.data.addr != 0)]
     unsafe fn item_from_waker(waker: &Waker) -> &'static mut TimerQueueItem {
         unsafe { task_from_waker(waker).timer_queue_item() }
     }
 
+    #[flux::spec(fn (waker: &Waker[@w]) -> Option<&mut TimerQueueItem> requires w.data.addr != 0)]
     unsafe fn try_item_from_waker(waker: &Waker) -> Option<&'static mut TimerQueueItem> {
         unsafe { try_task_from_waker(waker).map(|task| task.timer_queue_item()) }
     }
@@ -136,6 +147,7 @@ impl TaskRef {
     }
 
     /// Safety: The pointer must have been obtained with `Task::as_ptr`
+    #[flux::spec(fn (ptr: *const[@p] TaskHeader) -> TaskRef requires p.addr != 0)]
     pub(crate) unsafe fn from_ptr(ptr: *const TaskHeader) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr as *mut TaskHeader),
@@ -259,6 +271,7 @@ impl<F: Future + 'static> TaskStorage<F> {
     ///
     /// Once the task has finished running, you may spawn it again. It is allowed to spawn it
     /// on a different executor.
+    #[flux::trusted]
     pub fn spawn(&'static self, future: impl FnOnce() -> F) -> Result<SpawnToken<impl Sized>, SpawnError> {
         let task = AvailableTask::claim(self);
         match task {
@@ -405,6 +418,7 @@ impl<F: Future + 'static, const N: usize> TaskPool<F, N> {
     ///
     /// This will loop over the pool and spawn the task in the first storage that
     /// is currently free. If none is free, [`SpawnError::Busy`] is returned.
+    #[flux::trusted]
     pub fn spawn(&'static self, future: impl FnOnce() -> F) -> Result<SpawnToken<impl Sized>, SpawnError> {
         self.spawn_impl::<F>(future)
     }
@@ -418,6 +432,7 @@ impl<F: Future + 'static, const N: usize> TaskPool<F, N> {
     /// SAFETY: `future` must be a closure of the form `move || my_async_fn(args)`, where `my_async_fn`
     /// is an `async fn`, NOT a hand-written `Future`.
     #[doc(hidden)]
+    #[flux::trusted]
     pub unsafe fn _spawn_async_fn<FutFn>(&'static self, future: FutFn) -> Result<SpawnToken<impl Sized>, SpawnError>
     where
         FutFn: FnOnce() -> F,

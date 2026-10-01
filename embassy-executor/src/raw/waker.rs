@@ -8,6 +8,7 @@ unsafe fn clone(p: *const ()) -> RawWaker {
     RawWaker::new(p, &VTABLE)
 }
 
+#[flux::spec(fn (ptr: *const[@p] ()) requires p.addr != 0)]
 unsafe fn wake(p: *const ()) {
     wake_task(TaskRef::from_ptr(p as *const TaskHeader))
 }
@@ -31,6 +32,7 @@ pub(crate) unsafe fn from_task(p: TaskRef) -> Waker {
 /// # Panics
 ///
 /// Panics if the waker is not created by the Embassy executor.
+#[flux::spec(fn (waker: &Waker[@w]) -> TaskRef requires w.data.addr != 0)]
 pub fn task_from_waker(waker: &Waker) -> TaskRef {
     unwrap!(
         try_task_from_waker(waker),
@@ -38,6 +40,7 @@ pub fn task_from_waker(waker: &Waker) -> TaskRef {
     )
 }
 
+#[flux::spec(fn (waker: &Waker[@w]) -> Option<TaskRef> requires w.data.addr != 0)]
 pub(crate) fn try_task_from_waker(waker: &Waker) -> Option<TaskRef> {
     // make sure to compare vtable addresses. Doing `==` on the references
     // will compare the contents, which is slower.
